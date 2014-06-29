@@ -1,0 +1,159 @@
+<meta charset="utf-8">
+<style>
+  #rate-limit-w {
+    display: none;
+  }
+  #email {
+    direction: rtl;
+    unicode-bidi: bidi-override;
+  }
+  body {
+    width: 60%;
+    margin: 3em auto 0 auto;
+    font-family: 'courier';
+  }
+  a {
+    color: black;
+  }
+  .s {
+    width: 1em;
+    height: 1em;
+    background-color: black;
+    animation-duration: 4s;
+    animation-name: r;
+    animation-iteration-count: infinite;
+  }
+  #one {
+    transform-origin: 0em 2em;
+  }
+  #two {
+    transform-origin: 0em -1.5em;
+  }
+  @keyframes r {
+    0% {
+      transform: rotate(0deg);
+      border-radius: 0em;
+    }
+    5% {
+      transform: rotate(0deg);
+      border-radius: 0em;
+    }
+    30% {
+      border-radius: 1em;
+    }
+    50% {
+      transform: rotate(359deg);
+      border-radius: 0em;
+    }
+    55% {
+      transform: rotate(359deg);
+      border-radius: 0em;
+    }
+    60% {
+      border-radius: 1em;
+    }
+    100% {
+      transform: rotate(0deg);
+      border-radius: 0em;
+    }
+}
+#spinner {
+  display: block;
+  margin-left: 40%;
+  padding: 3em;
+}
+.hidden {
+  opacity: 0;
+  transition: 1s opacity;
+}
+
+p,ul,li {
+  transition: all 1.0s;
+}
+</style>
+<p>
+  Hi, I'm Paul, here are some stuff I'{m,ve been} toying with, or the slides for
+  the conferences I've been talking at:
+</p>
+<p id="things">
+<div id="spinner">
+  <div id=one class=s></div>
+  <div id=two class=s></div>
+</div>
+</p>
+<p>
+I can be reached on twitter (@<a href="http://twitter.com/padenot">padenot</a>)
+or by mail at <span id=email>xc.luap@luap</span>. Other than that, I idle on IRC
+in #media on irc.mozilla.org.
+</p>
+<span id="rate-limit-w"> API calls remaining: <span id=rate-limit></span> </span>
+<script>
+var user = "padenot";
+var $ = document.querySelector.bind(document);
+function xhr(url, cb) {
+  var x = new XMLHttpRequest();
+  x.open("GET", url);
+  x.onload = function() {
+    try {
+      var o = JSON.parse(x.responseText);
+      cb(o);
+    } catch(err) {
+      console.log(x.responseText);
+      alert("bad json");
+    }
+  }
+  x.onerror = function(e) {alert(e)};
+  x.send(null);
+}
+
+function _(str, kv) {
+  for (var i in kv) {
+    str = str.replace("{{"+i+"}}", kv[i]);
+  }
+  return str;
+}
+
+var api = "https://api.github.com/";
+var debug = false;
+
+xhr(api + "rate_limit", function(data) {
+  $('#rate-limit').innerHTML = data.resources.core.remaining;
+  if (debug) {
+    $("#rate-limit-w").style.display = "inline";
+  }
+  if (data.resources.core.remaining) {
+    main();
+  } else {
+    var d = document.createElement("div");
+    d.innerHTML = "API call limit for you IP reached. Come back later";
+    document.body.appendChild(d);
+  }
+});
+
+function main() {
+  xhr(api + _("users/{{u}}/repos?page=1&per_page=100", {"u": user}), function(data) {
+    $("#spinner").classList.add("hidden");
+    $("#spinner").addEventListener("transitionend", function(e) {
+      e.target.style.display = "none";
+      var ul = document.createElement("ul");
+      ul.classList.add("hidden");
+      for(var i = 0; i < data.length; i++) {
+        var li = document.createElement("li");
+        if (data[i].default_branch == "gh-pages") {
+          li.innerHTML = _("<a href='http://{{u}}.github.io/{{r}}'>{{n}}</a>, {{d}}", {
+            u: user,
+            r: data[i].name,
+            n: data[i].name,
+            d: data[i].description
+          });
+          ul.appendChild(li);
+        }
+      }
+      $("#things").appendChild(ul);
+      setTimeout(function() {
+        ul.classList.remove("hidden");
+      }, 0);
+    });
+  });
+}
+</script>
